@@ -1,0 +1,1 @@
+C:\ProgramData\Anaconda3\Scripts\activate base & labmate-viewer %1
