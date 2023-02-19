@@ -15,11 +15,12 @@ from typing import List
 from PyQt6 import QtWidgets
 from PyQt6 import QtGui, QtCore
 
-from labmate.syncdata import SyncData
+from labmate.syncdata import SyncData  # pylint: disable=E0401
 
 logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+STARTED_FROM_CMD = True
 
 
 def get_aqm_variable(code):
@@ -29,12 +30,16 @@ def get_aqm_variable(code):
 
 def convert_analyse_code(code: str, filepath: str):
     aqm_variable = get_aqm_variable(code)
-    return (code
+    code = (code
             .replace('%', '#%')
             .replace("fig.show()", "plt.show()")
             .replace(f"{aqm_variable}.analysis_cell(", f'{aqm_variable}.analysis_cell(filepath="{filepath}",')
             .replace(f"{aqm_variable}.save_fig(", f"# {aqm_variable}.save_fig(")
             )
+    if "plt." in code and "plt.show" not in code:
+        code += "\nplt.show()\n"
+
+    return code
 
 
 class QTextLogger(logging.Handler):
@@ -122,7 +127,8 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         self.logTextBox = QTextLogger()
 
-        self.logTextBox.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s\n'))
+        self.logTextBox.setFormatter(logging.Formatter(
+            '%(asctime)s - %(levelname)s - %(message)s\n'))
         logging.getLogger(__name__).addHandler(self.logTextBox)
         logging.getLogger(__name__).setLevel(logging.DEBUG)
 
@@ -167,7 +173,8 @@ class EditorWindow(QtWidgets.QMainWindow):
     @catch_and_log
     def run_analysis(self, *args):
         if self.file_path is None:
-            raise ValueError("There is no file_path specified. Should open_file first")
+            raise ValueError(
+                "There is no file_path specified. Should open_file first")
 
         analysis_code_original = self.text_edit.toPlainText()
         init_code = ""
@@ -177,8 +184,11 @@ class EditorWindow(QtWidgets.QMainWindow):
         if osp.exists(init_code_file):
             with open(init_code_file, 'r', encoding='utf-8') as file:
                 line = file.readline()
-                if line.startswith('# SOURCE: '):
-                    source = line[len("# SOURCE: "):-1]
+                while(line.startswith('#')):
+                    if line.startswith('# SOURCE: '):
+                        source = line[len("# SOURCE: "):-1]
+                        break
+                    line = file.readline()
 
             sys.path.append(self.file_dir)
             logger.debug("Import init code")
@@ -195,7 +205,8 @@ class EditorWindow(QtWidgets.QMainWindow):
                 import subprocess
                 command = f"{source}&& cd {self.file_dir}&& python __code_to_run__.py"
                 print(command)
-                ret = subprocess.run(command, capture_output=True, shell=True, check=False)
+                ret = subprocess.run(
+                    command, capture_output=True, shell=True, check=False)
 
                 logger.info("from subprocess: %s", ret.stdout.decode())
                 if ret.stderr.decode():
@@ -211,13 +222,15 @@ class EditorWindow(QtWidgets.QMainWindow):
     @property
     def filename(self):
         if self.file_path is None:
-            raise ValueError("There is no file_path specified. Should open_file first")
+            raise ValueError(
+                "There is no file_path specified. Should open_file first")
         return osp.split(self.file_path)[-1]
 
     @property
     def file_dir(self):
         if self.file_path is None:
-            raise ValueError("There is no file_path specified. Should open_file first")
+            raise ValueError(
+                "There is no file_path specified. Should open_file first")
         return osp.abspath(osp.dirname(self.file_path))
 
     @catch_and_log
@@ -239,7 +252,8 @@ class EditorWindow(QtWidgets.QMainWindow):
             if item.childCount() == 0:
                 for keys in data.keys():
                     TreeWidgetItem(item, keys)
-            self.text_edit.setText(("It contains more data" if len(data) > 0 else str(data)))
+            self.text_edit.setText(
+                ("It contains more data" if len(data) > 0 else str(data)))
         else:
             if item_is_analysis_cell:
                 data = convert_analyse_code(str(data), self.filename)
@@ -259,7 +273,6 @@ class EditorWindow(QtWidgets.QMainWindow):
 
 def main():
     APP = QtWidgets.QApplication(sys.argv)
-
     if os.name == 'nt':
         try:
             from ctypes import windll
