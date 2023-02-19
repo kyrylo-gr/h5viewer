@@ -8,7 +8,7 @@ a = Analysis(
     ['src/h5viewer/h5viewer.py'],
     pathex=[],
     binaries=[],
-    datas=[('src/favicon.ico', '.')],
+    datas=[('src/h5viewer/favicon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -41,12 +41,12 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='src/favicon.ico'
+    icon='src/h5viewer/favicon.ico'
 )
 
 app = BUNDLE(
     exe,
     name='h5viewer.app',
-    icon='src/favicon.icns',
+    icon='src/h5viewer/favicon.icns',
     bundle_identifier=None,
 )
