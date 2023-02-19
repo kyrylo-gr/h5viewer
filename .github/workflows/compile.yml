@@ -17,17 +17,17 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - os: ubuntu-latest
-            NAME: ubuntu
-            OUT_FILE_NAME: ubuntu.zip
-            POST_BUILD_CMD: cd dist/ && zip ubuntu ubuntu
-            COMMAND: pyinstaller --distpath dist/ubuntu "main.spec"
+          # - os: ubuntu-latest
+          #   NAME: ubuntu
+          #   OUT_FILE_NAME: ubuntu.zip
+          #   POST_BUILD_CMD: cd dist/ && zip ubuntu ubuntu
+          #   COMMAND: pyinstaller --distpath dist/ubuntu "main.spec"
 
-          - os: macos-latest
-            NAME: macos
-            OUT_FILE_NAME: macos.zip
-            POST_BUILD_CMD: cd dist/ && zip macos macos
-            COMMAND: pyinstaller --distpath dist/macos "main.spec"
+          # - os: macos-latest
+          #   NAME: macos
+          #   OUT_FILE_NAME: macos.zip
+          #   POST_BUILD_CMD: cd dist/ && zip macos macos
+          #   COMMAND: pyinstaller --distpath dist/macos "main.spec"
 
           - os: windows-latest
             NAME: windows
@@ -35,7 +35,6 @@ jobs:
             POST_BUILD_CMD: cd dist/ && tar.exe -c -f windows.zip windows
             COMMAND: pyinstaller --distpath dist/windows "main.spec"
 
-          #   ASSET_MIME: application/vnd.microsoft.portable-executable
 
     steps:
       - uses: actions/checkout@v3
@@ -56,12 +55,14 @@ jobs:
         if: ${{ matrix.config.POST_BUILD_CMD != '' }}
         run: ${{ matrix.config.POST_BUILD_CMD }}
 
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.config.NAME}}
+          path: './dist/${{matrix.config.NAME}}/'
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
           files: './dist/${{matrix.config.OUT_FILE_NAME}}'
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ${{matrix.config.NAME}}
-          path: './dist/${{matrix.config.NAME}}/'
+      
