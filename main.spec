@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(
-    ['src/h5viewer/h5viewer.py'],
+    ['src/h5viewer/main.py'],
     pathex=[],
     binaries=[],
     datas=[('src/h5viewer/favicon.ico', '.')],
