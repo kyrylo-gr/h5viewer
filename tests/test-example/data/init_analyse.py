@@ -1,4 +1,4 @@
-# SOURCE: source /Users/4cd87a/opt/anaconda3/bin/activate test2
+# SOURCE: source ~/opt/anaconda3/bin/activate test2
 import sys
 import os
 import matplotlib.pylab as plt
