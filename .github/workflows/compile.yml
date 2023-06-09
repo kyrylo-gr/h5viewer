@@ -4,6 +4,12 @@
 name: Compile
 
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: environment
+        default: DEV
+        required: true
   release:
     types: [published]
 
@@ -17,11 +23,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          # - os: ubuntu-latest
-          #   NAME: ubuntu
-          #   OUT_FILE_NAME: ubuntu.zip
-          #   POST_BUILD_CMD: cd dist/ && zip ubuntu ubuntu
-          #   COMMAND: pyinstaller --distpath dist/ubuntu "main.spec"
+          - os: ubuntu-latest
+            NAME: ubuntu
+            OUT_FILE_NAME: ubuntu.zip
+            POST_BUILD_CMD: cd dist/ && zip ubuntu ubuntu
+            COMMAND: pyinstaller --distpath dist/ubuntu "main.spec"
 
           # - os: macos-latest
           #   NAME: macos
@@ -31,10 +37,9 @@ jobs:
 
           - os: windows-latest
             NAME: windows
-            OUT_FILE_NAME: windows.zip
-            POST_BUILD_CMD: cd dist/ && tar.exe -c -f windows.zip windows
+            OUT_FILE_NAME: windows/h5viewer.exe #windows.zip
+            # POST_BUILD_CMD: cd dist/ && tar.exe -c -f windows.zip windows
             COMMAND: pyinstaller --distpath dist/windows "main.spec"
-
 
     steps:
       - uses: actions/checkout@v3
@@ -64,5 +69,3 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: './dist/${{matrix.config.OUT_FILE_NAME}}'
-
-      
