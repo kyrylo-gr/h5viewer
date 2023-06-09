@@ -29,7 +29,7 @@ Example for Windows:
 ### How to run code before your analyze cell. `init_analyse.py`
 If you want to set up any variables or imports before running the analysis_cell, you can do in by adding the `init_analyse.py` file in the same directory as the data file.
 
-Example:
+Use case:
 This is the classical file structure if you use `labmate` library:
 - sample_001
     - analysis_code
@@ -38,8 +38,7 @@ This is the classical file structure if you use `labmate` library:
         - experiment_1
             - init_analyse.py
             - data_file.h5
-
-So you open `data_file.h5` and try to run the code inside it. But to do that you need `analysis_script.py`. So inside `init_analyse.py` you need to import it:
+Suppose you opened `data_file.h5` and try to run the code inside it, but it needs dependencies from `analysis_script.py`. So they could be imported inside `init_analyse.py` like this:
 ```python
 from labmate.acquisition_notebook import AcquisitionAnalysisManager
 
@@ -49,12 +48,13 @@ sys.path.append(os.path.join(os.path.abspath(SCRIPT_DIR), 'analyse'))
 meas_dir = os.path.split(os.path.split(SCRIPT_DIR)[0])[0]
 aqm = AcquisitionAnalysisManager(meas_dir)
 
-from init_analyse import *
+from analysis_script import *
 ```
 
 
 ### Error
 Any error can be seen in the console view at the bottom right. Output from executing analysis_cell is also available there.
+
 ![docs/img/logger.png](./docs/img/logger.png)
 
 
