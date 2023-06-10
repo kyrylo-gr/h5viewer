@@ -3,7 +3,8 @@
 H5viewer for labmate.
 
 @authors:
-Samuel Deleglise, kyrylo-gr
+started by: SamuelDeleglise,
+after: kyrylo-gr
 
 https://stackoverflow.com/questions/63611190/python-macos-builds-run-from-terminal-but-crash-on-finder-launch
 """
