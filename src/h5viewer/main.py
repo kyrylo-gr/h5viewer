@@ -115,7 +115,7 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
 
         self.number_format = QtGui.QTextCharFormat()
         self.number_format.setForeground(QtGui.QColor("#0550ae"))
-        
+
         self.equal_format = QtGui.QTextCharFormat()
         self.equal_format.setForeground(QtGui.QColor("#0550ae"))
 
@@ -500,7 +500,7 @@ class EditorWindow(QtWidgets.QMainWindow):
             self.text_edit.setPlainText(str(data))  # .setText(str(data))
 
         return None
-    
+
     # ====== Shortcuts ======
     def keyPressEvent(self, event):
         if event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier and event.key() == QtCore.Qt.Key.Key_F:
@@ -523,9 +523,9 @@ def main():
         }
 
     """
-    
+
     APP.setStyleSheet(style_sheet)
-    
+
     if os.name == 'nt':
         try:
             from ctypes import windll
