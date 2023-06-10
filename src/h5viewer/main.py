@@ -98,25 +98,28 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
         self.classical_format.setForeground(QtGui.QColor("#000000"))
 
         self.keyword_format = QtGui.QTextCharFormat()
-        self.keyword_format.setForeground(QtGui.QColor("#5F99D8"))
+        self.keyword_format.setForeground(QtGui.QColor("#cf222e"))
 
         self.function_format = QtGui.QTextCharFormat()
-        self.function_format.setForeground(QtGui.QColor("#DCDFAA"))
+        self.function_format.setForeground(QtGui.QColor("#8250df"))
 
         self.var_format = QtGui.QTextCharFormat()
         self.var_format.setForeground(QtGui.QColor("#A3DAFF"))
 
         self.comment_format = QtGui.QTextCharFormat()
-        self.comment_format.setForeground(QtGui.QColor("#6E9B57"))
+        self.comment_format.setForeground(QtGui.QColor("#6e7781"))
 
         self.string_format = QtGui.QTextCharFormat()
-        self.string_format.setForeground(QtGui.QColor("#CC9377"))
+        self.string_format.setForeground(QtGui.QColor("#0a3069"))
 
         self.number_format = QtGui.QTextCharFormat()
-        self.number_format.setForeground(QtGui.QColor("#B7D0A8"))
+        self.number_format.setForeground(QtGui.QColor("#0550ae"))
+        
+        self.equal_format = QtGui.QTextCharFormat()
+        self.equal_format.setForeground(QtGui.QColor("#0550ae"))
 
         self.class_format = QtGui.QTextCharFormat()
-        self.class_format.setForeground(QtGui.QColor("#5ECDB1"))
+        self.class_format.setForeground(QtGui.QColor("#953800"))
 
         keywords = "(?:True|False|None|def|class|if|else|elif|for|\
             while|in|not|and|or|with|assert|return|raise|global|import|from)"
@@ -130,11 +133,11 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
             # if ...
             (f"\\b({keywords})\\b", self.keyword_format),
             # var =
-            (f"\\b({var})(( )?=)", self.var_format),
+            # (f"\\b({var})(( )?=)", self.var_format),
             # if var
-            (f"\\b{keywords} {var}", self.var_format),
+            # (f"\\b{keywords} {var}", self.var_format),
             # .var
-            (f"\\.({var})", self.var_format),
+            (f"\\.({var})", self.function_format),
             # def abc(var, var = ...)
             # (f"\\bdef {var}(\\((({var})[, =]*)*\\))", self.classical_format),
             # "...", '...'
@@ -142,6 +145,8 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
             # 123, 123.32, 123_123
             ("\\b((\\-?[\\d_]+\\.?\\d*)(e(\\-?[\\d_]+\\.?\\d*))?)",
              self.number_format),
+            # equal format
+            ("(?:\\w| )(=)(?:\\w| )", self.equal_format),
             # ...
             ("(#[^\n]*)", self.comment_format),
             # long comments
@@ -257,7 +262,8 @@ class StructureWidget(QtWidgets.QTreeWidget):
     def add_to_node(self, node, structure: dict, path=None):
         if path is None:
             path = [0]
-        for i, (key, value) in enumerate(structure.items()):
+        structure = sorted(list(structure.items()))
+        for i, (key, value) in enumerate(structure):
             path[-1] = i
             row = TreeWidgetItem(node, key)
             if isinstance(value, dict):
@@ -419,13 +425,12 @@ class EditorWindow(QtWidgets.QMainWindow):
         with open(path, 'w', encoding="utf-8") as file:
             file.write(link)
 
-        import webbrowser
+        import webbrowser  # pylint: disable=C0415, E0401
         webbrowser.open(f"file://{path.absolute()}")
         time.sleep(1)
         os.remove(path.absolute())
 
     # ====== Tree interaction ======
-
     @catch_and_log
     def close_last_open_tree_item(self):
         if self.last_tree_index is None:
@@ -475,7 +480,7 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         if isinstance(data, dict):
             if item.childCount() == 0:
-                for key in data.keys():
+                for key in sorted(list(data.keys())):
                     TreeWidgetItem(item, key)
             self.text_edit.setText(
                 ("It contains more data" if len(data) > 0 else str(data)))
@@ -483,7 +488,7 @@ class EditorWindow(QtWidgets.QMainWindow):
             if tree_to_item[0].startswith("analysis_cell"):
                 self.central_widget.run_analysis_button.setVisible(True)
                 data = convert_analyse_code(str(data), self.filename)
-            if "```mermaid" in data:
+            if isinstance(data, str) and "```mermaid" in data:
                 self.central_widget.preview_button.setVisible(True)
 
             if has_outline(tree_to_item[-1]):
@@ -494,18 +499,32 @@ class EditorWindow(QtWidgets.QMainWindow):
             self.text_edit.setPlainText(str(data))  # .setText(str(data))
 
         return None
+    
     # ====== Shortcuts ======
-
     def keyPressEvent(self, event):
         if event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier and event.key() == QtCore.Qt.Key.Key_F:
-            self.central_widget.find_field.setVisible(
-                not self.central_widget.find_field.isVisible())
+            if not self.central_widget.find_field.isVisible():
+                self.central_widget.find_field.setVisible(True)
+                self.central_widget.find_field.setFocus()
+            else:
+                self.central_widget.find_field.setVisible(False)
         else:
             super().keyPressEvent(event)
 
 
 def main():
     APP = QtWidgets.QApplication(sys.argv)
+    APP.setStyle("fusion")
+    style_sheet = """
+        QWidget {
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+
+    """
+    
+    APP.setStyleSheet(style_sheet)
+    
     if os.name == 'nt':
         try:
             from ctypes import windll
