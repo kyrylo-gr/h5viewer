@@ -66,6 +66,7 @@ jobs:
           path: './dist/${{matrix.config.NAME}}/'
 
       - name: Release
+        if: startsWith(github.ref, 'refs/heads/release/')
         uses: softprops/action-gh-release@v1
         with:
           files: './dist/${{matrix.config.OUT_FILE_NAME}}'
