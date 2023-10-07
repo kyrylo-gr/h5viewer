@@ -5,7 +5,7 @@ with open("README.md", "r", encoding='utf-8') as fh:
 
 setuptools.setup(
     name='h5viewer',
-    version="0.7.0",
+    version="0.8.0",
     author="LKB-OMQ",
     author_email="cryo.paris.su@gmail.com",
     description="Viewer for hdf5 files created by labmate",
@@ -15,7 +15,8 @@ setuptools.setup(
     # py_modules=['h5viewer'],
     package_dir={'': 'src'},
     # packages=['labmate'],
-    packages=setuptools.find_packages(where='src', exclude=['tests', 'tests.*']),
+    packages=setuptools.find_packages(
+        where='src', exclude=['tests', 'tests.*']),
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",

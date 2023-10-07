@@ -15,7 +15,7 @@ import time
 import sys
 import re
 import os.path as osp
-from typing import List
+from typing import List, Optional
 from PyQt6 import QtWidgets
 from PyQt6 import QtGui, QtCore
 
@@ -61,16 +61,13 @@ def has_outline(name: str):
     return name.endswith('.py')
 
 
-# ====== Logger ======
-class QTextLogger(logging.Handler):
-    def __init__(self):
-        super().__init__()
-        self.widget = QtWidgets.QPlainTextEdit()
-        self.widget.setReadOnly(True)
+def to_str(obj) -> str:
+    return str(obj)
 
-    def emit(self, record):
-        msg = self.format(record)
-        self.widget.appendPlainText(msg)
+
+class ObjectNotExists:
+    pass
+# ====== Logger ======
 
 
 def catch_and_log(function):
@@ -85,7 +82,19 @@ def catch_and_log(function):
     return wrapper
 
 
+class QTextLogger(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.widget = QtWidgets.QPlainTextEdit()
+        self.widget.setReadOnly(True)
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.widget.appendPlainText(msg)
+
 # ====== Highlighter ======
+
+
 class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -273,9 +282,10 @@ class StructureWidget(QtWidgets.QTreeWidget):
 
 # ====== Main menu ======
 class EditorWindow(QtWidgets.QMainWindow):
-    data = None
+    data: Optional[SyncData] = None
     file_path = None
     last_tree_index = None
+    previous_data: Optional[SyncData] = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -291,9 +301,15 @@ class EditorWindow(QtWidgets.QMainWindow):
         logging.getLogger(__name__).addHandler(self.logTextBox)
         logging.getLogger(__name__).setLevel(logging.DEBUG)
 
+        self.dif_button = QtWidgets.QPushButton()
+        self.dif_button.clicked.connect(self.show_difference)
+        self.dif_button.setVisible(False)
+
+        self.dif_button.setText("Compare with previous file")
         vhlayout = QtWidgets.QVBoxLayout()
         vhlayout.addWidget(self.structure, 3)
         vhlayout.addWidget(self.logTextBox.widget, 1)
+        vhlayout.addWidget(self.dif_button, 1)
         vhwidget = QtWidgets.QWidget()
         vhwidget.setLayout(vhlayout)
         hlayout.addWidget(vhwidget, 2)
@@ -338,7 +354,7 @@ class EditorWindow(QtWidgets.QMainWindow):
     def dragEnterEvent(self, event: QtGui.QDropEvent):  # pylint: disable=C0103
         if len(event.mimeData().urls()) == 1:
             event.accept()
-        logger.warning("dropped, but it should be just one file")
+            logger.warning("dropped, but it should be just one file")
 
     @catch_and_log
     def dropEvent(self, event: QtGui.QDropEvent):  # pylint: disable=C0103
@@ -353,7 +369,13 @@ class EditorWindow(QtWidgets.QMainWindow):
 
     @catch_and_log
     def open_file(self, file_path):
+        self.previous_data = self.data
+        if self.previous_data:
+            self.dif_button.setVisible(True)
+            self.previous_data.close_key(every=True)
+
         self.file_path = file_path
+
         self.structure.clear()
 
         self.data = SyncData(file_path, open_on_init=False)
@@ -430,8 +452,50 @@ class EditorWindow(QtWidgets.QMainWindow):
         webbrowser.open(f"file://{path.absolute()}")
         time.sleep(1)
         os.remove(path.absolute())
+    # ====== File difference ======
+
+    @catch_and_log
+    def show_difference(self, event):
+        if not self.previous_data:
+            return
+        import difflib
+        d = difflib.Differ()
+
+        keys = self.last_tree_structure
+        current_data = self.get_data_by_key(self.data, keys)
+        previous_data = self.get_data_by_key(self.previous_data, keys)
+
+        if previous_data is ObjectNotExists:
+            self.text_edit.setPlainText(
+                "Previous data doesn't have the following key")
+            return
+
+        if current_data is ObjectNotExists:
+            self.text_edit.setPlainText(
+                "Current data doesn't have the following key")
+            return
+
+        diff = list(d.compare(
+                    to_str(current_data).splitlines(),
+                    to_str(previous_data).splitlines(),))
+
+        print('\n'.join(diff))
+        diff_result = []
+        for line in diff:
+            if line.startswith('- '):
+                diff_result.append(
+                    f'<span style="background-color: #FFCCCC;">{line[2:]}</span>')
+            elif line.startswith('+ '):
+                diff_result.append(
+                    f'<span style="background-color: #08A045;">{line[2:]}</span>')
+            else:
+                diff_result.append(f'<span>{line[2:]}</span>')
+
+        formatted_html = '<pre>' + '<br>'.join(diff_result) + '</pre>'
+        self.text_edit.setHtml(formatted_html)
 
     # ====== Tree interaction ======
+
     @catch_and_log
     def close_last_open_tree_item(self):
         if self.last_tree_index is None:
@@ -445,6 +509,36 @@ class EditorWindow(QtWidgets.QMainWindow):
                           index: QtCore.QModelIndex) -> None:
         assert self.data, "Data should be loaded before reading"
         return self.structure_selected(index)
+
+    @catch_and_log
+    def get_data_by_key(self, data=None, keys=None):
+        """
+        Returns data from the HDF5 file corresponding to the given keys.
+
+        Args:
+            keys (list): A list of keys representing the path to the desired data.
+
+        Returns:
+            The data corresponding to the given keys.
+        """
+        if keys is None:
+            keys = self.last_tree_structure
+        if data is None:
+            data = self.data
+
+        if keys[0] not in data:
+            return ObjectNotExists
+
+        data = data.get_dict(keys[0])
+        for key in keys[1:]:
+            if key not in data:
+                return ObjectNotExists
+            if isinstance(data, dict):
+                data = data.get(key)
+            else:
+                return data
+
+        return data
 
     @catch_and_log
     def structure_selected(self,
