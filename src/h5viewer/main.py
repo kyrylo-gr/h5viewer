@@ -15,12 +15,12 @@ import time
 import sys
 import re
 import os.path as osp
-from typing import List, Optional
+from typing import List, NamedTuple, Optional
 from PyQt6 import QtWidgets
 from PyQt6 import QtGui, QtCore
 
-
 from labmate.syncdata import SyncData  # pylint: disable=E0401
+import labmate  # pylint: disable=E0401
 
 logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
@@ -67,6 +67,11 @@ def to_str(obj) -> str:
 
 class ObjectNotExists:
     pass
+
+
+class AppSettings(NamedTuple):
+    file_path: str
+
 # ====== Logger ======
 
 
@@ -304,12 +309,19 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.dif_button = QtWidgets.QPushButton()
         self.dif_button.clicked.connect(self.show_difference)
         self.dif_button.setVisible(False)
-
         self.dif_button.setText("Compare with previous file")
+
+        self.open_from_clipboard_button = QtWidgets.QPushButton()
+        self.open_from_clipboard_button.clicked.connect(
+            self.open_from_clipboard)
+        self.open_from_clipboard_button.setText("Open from clipboard")
+
         vhlayout = QtWidgets.QVBoxLayout()
         vhlayout.addWidget(self.structure, 3)
         vhlayout.addWidget(self.logTextBox.widget, 1)
         vhlayout.addWidget(self.dif_button, 1)
+        vhlayout.addWidget(self.open_from_clipboard_button, 1)
+
         vhwidget = QtWidgets.QWidget()
         vhwidget.setLayout(vhlayout)
         hlayout.addWidget(vhwidget, 2)
@@ -332,6 +344,10 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.setAcceptDrops(True)
 
         self.last_tree_structure = ['none']
+
+        settings = self.load_settings()
+        if settings.file_path:
+            self.open_file(settings.file_path)
 
     # ====== Properties ======
 
@@ -368,6 +384,45 @@ class EditorWindow(QtWidgets.QMainWindow):
             break
 
     @catch_and_log
+    def open_from_clipboard(self, event):
+        del event
+        clipboard = QtWidgets.QApplication.clipboard().text()
+        if not clipboard:
+            logger.warning("Clipboard is empty")
+            return
+        return self.open_from_string(clipboard)
+
+    @catch_and_log
+    def open_from_string(self, string):
+        logger.info("Open from string: '%s'", string)
+
+        if self.file_path is None:
+            logger.warning(
+                "Cannot open file from string because there is no file yet opened.")
+            return
+        working_dir = os.path.dirname(self.file_path)
+        path = os.path.join(working_dir, string)
+        if os.path.exists(path):
+            self.open_file(path)
+            return
+
+        filepath = labmate.utils.get_path_from_filename(string)
+        if isinstance(filepath, tuple):
+            folder, filename = filepath
+        else:
+            folder, filename = '', filepath
+        working_dir = os.path.dirname(self.file_path)
+        path = os.path.join(working_dir, folder, filename)
+        while working_dir and not os.path.exists(path):
+            working_dir = os.path.dirname(working_dir)
+            path = os.path.join(working_dir, folder, filename)
+        if not os.path.exists(path):
+            logger.warning("File %s at %s not found", filename, folder)
+            return
+
+        self.open_file(path)
+
+    @catch_and_log
     def open_file(self, file_path):
         self.previous_data = self.data
         if self.previous_data:
@@ -381,6 +436,7 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.data = SyncData(file_path, open_on_init=False)
         self.structure.update(self.data.keys_tree())
         self.setWindowTitle(osp.split(file_path)[1])
+        self.save_settings()
 
     # ====== Run Analysis ======
     @catch_and_log
@@ -605,6 +661,18 @@ class EditorWindow(QtWidgets.QMainWindow):
                 self.central_widget.find_field.setVisible(False)
         else:
             super().keyPressEvent(event)
+
+    # ====== Config ========
+    @catch_and_log
+    def save_settings(self):
+        settings = QtCore.QSettings()
+        settings.setValue("file_path", self.file_path)
+
+    @catch_and_log
+    def load_settings(self):
+        settings = QtCore.QSettings()
+        file_path = settings.value("file_path")
+        return AppSettings(file_path=file_path)
 
 
 def main():
