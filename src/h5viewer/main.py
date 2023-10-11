@@ -10,9 +10,11 @@ https://stackoverflow.com/questions/63611190/python-macos-builds-run-from-termin
 """
 import logging
 import os
+import sys
+import subprocess
+
 from labmate.path import Path
 import time
-import sys
 import re
 import os.path as osp
 from typing import List, NamedTuple, Optional
@@ -316,11 +318,17 @@ class EditorWindow(QtWidgets.QMainWindow):
             self.open_from_clipboard)
         self.open_from_clipboard_button.setText("Open from clipboard")
 
+        self.open_in_finder_button = QtWidgets.QPushButton()
+        self.open_in_finder_button.clicked.connect(
+            self.open_in_finder)
+        self.open_in_finder_button.setText("Open in finder")
+
         vhlayout = QtWidgets.QVBoxLayout()
         vhlayout.addWidget(self.structure, 3)
         vhlayout.addWidget(self.logTextBox.widget, 1)
         vhlayout.addWidget(self.dif_button, 1)
         vhlayout.addWidget(self.open_from_clipboard_button, 1)
+        vhlayout.addWidget(self.open_in_finder_button, 1)
 
         vhwidget = QtWidgets.QWidget()
         vhwidget.setLayout(vhlayout)
@@ -421,6 +429,24 @@ class EditorWindow(QtWidgets.QMainWindow):
             return
 
         self.open_file(path)
+
+    @catch_and_log
+    def open_in_finder(self, event):
+        del event
+        if self.file_path is None:
+            logger.warning("Cannot open the folder as no file opened.")
+            return
+
+        path = self.file_path
+        logger.info("Open folder %s", path)
+
+        if sys.platform == "win32":
+            subprocess.Popen(["explorer", "/select,", path], shell=True)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", "-R", os.path.dirname(self.file_path)])
+        else:
+            subprocess.Popen(
+                ["nautilus", "--select", os.path.dirname(self.file_path)])
 
     @catch_and_log
     def open_file(self, file_path):
