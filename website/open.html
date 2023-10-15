@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>H5viewer</title>
+  </head>
+  <body>
+    This page testing the js
+
+    <script>
+      console.log('JS is working');
+      console.log(window.location.href);
+
+      const queryString = window.location.search;
+      const urlParams = new URLSearchParams(queryString);
+      let url = urlParams.get('url');
+      url = 'labmate://file//' + url;
+      open(url, '_blank');
+      close();
+    </script>
+  </body>
+</html>
+open
