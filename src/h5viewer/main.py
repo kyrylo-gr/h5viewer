@@ -298,6 +298,11 @@ class EditorWindow(QtWidgets.QMainWindow):
         super().__init__(parent)
 
         hlayout = QtWidgets.QHBoxLayout()
+        self.key_label = QtWidgets.QLabel()
+        self.key_label.mousePressEvent = self.key_label_click
+
+        self.key_label.setText("#")
+
         self.structure = StructureWidget()
         self.structure.doubleClicked.connect(self.tree_double_click)
 
@@ -324,13 +329,14 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.open_in_finder_button.setText("Open in finder")
 
         vhlayout = QtWidgets.QVBoxLayout()
-        vhlayout.addWidget(self.structure, 3)
-        vhlayout.addWidget(self.logTextBox.widget, 1)
-        vhlayout.addWidget(self.dif_button, 1)
+        vhlayout.addWidget(self.key_label, 0)
+        vhlayout.addWidget(self.structure, 10)
+        vhlayout.addWidget(self.logTextBox.widget, 3)
+        vhlayout.addWidget(self.dif_button, 0)
         buttons = QtWidgets.QHBoxLayout()
         buttons.addWidget(self.open_in_finder_button, 1)
         buttons.addWidget(self.open_from_clipboard_button, 1)
-        vhlayout.addLayout(buttons, 1)
+        vhlayout.addLayout(buttons, 0)
 
         vhwidget = QtWidgets.QWidget()
         vhwidget.setLayout(vhlayout)
@@ -427,6 +433,11 @@ class EditorWindow(QtWidgets.QMainWindow):
             else:
                 folders, filename = [], filepath
 
+        if '#' in filename:
+            filename, fileindex = filename.split('#')[:2]
+        else:
+            fileindex = None
+
         path = os.path.join(working_dir, *folders, filename)
         while working_dir and not os.path.exists(path):
             working_dir = os.path.dirname(working_dir)
@@ -436,6 +447,9 @@ class EditorWindow(QtWidgets.QMainWindow):
             return
 
         self.open_file(path)
+
+        if fileindex:
+            pass
 
     @catch_and_log
     def open_in_finder(self, event):
@@ -645,6 +659,10 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.central_widget.run_analysis_button.setVisible(False)
         self.central_widget.preview_button.setVisible(False)
 
+        self.close_last_open_tree_item()
+        self.last_tree_index = index
+        self.last_tree_structure = tree_to_item
+
         data = self.data.get_dict(tree_to_item[0])
         for key in tree_to_item[1:]:
             if isinstance(data, dict):
@@ -664,9 +682,8 @@ class EditorWindow(QtWidgets.QMainWindow):
                 self.text_edit.ensureCursorVisible()
                 return
 
-        self.close_last_open_tree_item()
-        self.last_tree_index = index
-        self.last_tree_structure = tree_to_item
+        self.key_label.setText('#' + ".".join(tree_to_item))
+        self.key_label.setStyleSheet('')
 
         if isinstance(data, dict):
             if item.childCount() == 0:
@@ -701,7 +718,14 @@ class EditorWindow(QtWidgets.QMainWindow):
         else:
             super().keyPressEvent(event)
 
+    def key_label_click(self, event):
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(self.key_label.text(),
+                          mode=QtGui.QClipboard.Mode.Clipboard)
+        self.key_label.setStyleSheet("border-bottom: 1px solid;")
+
     # ====== Config ========
+
     @catch_and_log
     def save_settings(self):
         settings = QtCore.QSettings()
