@@ -32,7 +32,8 @@ STARTED_FROM_CMD = True
 
 if os.name == "nt" or os.environ.get("PYINSTALLER"):
     local_path = QtCore.QStandardPaths.writableLocation(
-        QtCore.QStandardPaths.StandardLocation.AppConfigLocation)
+        QtCore.QStandardPaths.StandardLocation.AppConfigLocation
+    )
     os.makedirs(local_path + "\\" + "labmate", exist_ok=True)
 
     config_path = os.path.join(local_path, "labmate", "config.ini")
@@ -42,19 +43,21 @@ else:
 
 
 def get_aqm_variable(code):
-    code2 = code[:code.find('.analysis_cell')]
-    return code2[code2.rfind('\n')+1:]
+    code2 = code[: code.find(".analysis_cell")]
+    return code2[code2.rfind("\n") + 1 :]
 
 
 def convert_analyse_code(code: str, filepath: str):
     aqm_variable = get_aqm_variable(code)
-    code = (code
-            .replace('%', '#%')
-            .replace("fig.show()", "plt.show()")
-            .replace(f"{aqm_variable}.analysis_cell(",
-                     f'{aqm_variable}.analysis_cell(filepath="{filepath}",')
-            .replace(f"{aqm_variable}.save_fig(", f"# {aqm_variable}.save_fig(")
-            )
+    code = (
+        code.replace("%", "#%")
+        .replace("fig.show()", "plt.show()")
+        .replace(
+            f"{aqm_variable}.analysis_cell(",
+            f'{aqm_variable}.analysis_cell(filepath="{filepath}",',
+        )
+        .replace(f"{aqm_variable}.save_fig(", f"# {aqm_variable}.save_fig(")
+    )
     if "plt." in code and "plt.show" not in code:
         code += "\nplt.show()\n"
 
@@ -71,7 +74,7 @@ def get_outline(data: str):
 
 
 def has_outline(name: str):
-    return name.endswith('.py')
+    return name.endswith(".py")
 
 
 def to_str(obj) -> str:
@@ -84,6 +87,7 @@ class ObjectNotExists:
 
 class AppSettings(NamedTuple):
     file_path: str
+
 
 # ====== Logger ======
 
@@ -109,6 +113,7 @@ class QTextLogger(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
         self.widget.appendPlainText(msg)
+
 
 # ====== Highlighter ======
 
@@ -171,8 +176,7 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
             # "...", '...'
             ("((\"[^\"]*\")|('[^']*'))", self.string_format),
             # 123, 123.32, 123_123
-            ("\\b((\\-?[\\d_]+\\.?\\d*)(e(\\-?[\\d_]+\\.?\\d*))?)",
-             self.number_format),
+            ("\\b((\\-?[\\d_]+\\.?\\d*)(e(\\-?[\\d_]+\\.?\\d*))?)", self.number_format),
             # equal format
             ("(?:\\w| )(=)(?:\\w| )", self.equal_format),
             # ...
@@ -183,14 +187,14 @@ class PythonSyntaxHighlighter(QtGui.QSyntaxHighlighter):
 
     @catch_and_log
     def highlightBlock(self, text: str) -> None:
+        text = text.replace("\u2028", "\n")
         for pattern, format_ in self.highlighting_rules:
             for match in re.finditer(pattern, text):
                 if len(match.regs) < 2:
                     continue
                 start_end = match.regs[1]
-                self.setFormat(start_end[0],
-                               start_end[1] - start_end[0],
-                               format_)
+                self.setFormat(start_end[0], start_end[1] - start_end[0], format_)
+
 
 # ====== TextCode ======
 
@@ -248,7 +252,7 @@ class CentralWidget(QtWidgets.QWidget):
                 self.text_edit.setTextCursor(cursor)
                 return self.find_text()
             return
-        cursor.setPosition(pos+start)
+        cursor.setPosition(pos + start)
         cursor.select(cursor.SelectionType.WordUnderCursor)
         self.setFocus()
         self.text_edit.setFocus()
@@ -265,6 +269,8 @@ class TreeWidgetItem(QtWidgets.QTreeWidgetItem):
 
 
 class StructureWidget(QtWidgets.QTreeWidget):
+    last_tree_index = None
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setHeaderHidden(True)
@@ -287,6 +293,10 @@ class StructureWidget(QtWidgets.QTreeWidget):
         self.add_to_node(self, structure)
         self.collapseAll()
 
+    def clear(self) -> None:
+        self.last_tree_index = None
+        return super().clear()
+
     def add_to_node(self, node, structure: dict, path=None):
         if path is None:
             path = [0]
@@ -296,6 +306,13 @@ class StructureWidget(QtWidgets.QTreeWidget):
             row = TreeWidgetItem(node, key)
             if isinstance(value, dict):
                 self.add_to_node(row, value, path)
+
+    def close_last_open_tree_item(self):
+        if self.last_tree_index is None:
+            return
+        last_item = self.itemFromIndex(self.last_tree_index)
+        if has_outline(last_item.text(0)):
+            self.collapse(self.last_tree_index)
 
 
 # ====== Main menu ======
@@ -319,8 +336,9 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         self.logTextBox = QTextLogger()
 
-        self.logTextBox.setFormatter(logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s\n'))
+        self.logTextBox.setFormatter(
+            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s\n")
+        )
         logging.getLogger(__name__).addHandler(self.logTextBox)
         logging.getLogger(__name__).setLevel(logging.DEBUG)
 
@@ -330,13 +348,11 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.dif_button.setText("Compare with previous file")
 
         self.open_from_clipboard_button = QtWidgets.QPushButton()
-        self.open_from_clipboard_button.clicked.connect(
-            self.open_from_clipboard)
+        self.open_from_clipboard_button.clicked.connect(self.open_from_clipboard)
         self.open_from_clipboard_button.setText("Open from clipboard")
 
         self.open_in_finder_button = QtWidgets.QPushButton()
-        self.open_in_finder_button.clicked.connect(
-            self.open_in_finder)
+        self.open_in_finder_button.clicked.connect(self.open_in_finder)
         self.open_in_finder_button.setText("Open in finder")
 
         vhlayout = QtWidgets.QVBoxLayout()
@@ -356,10 +372,8 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.central_widget = CentralWidget(self)
         self.text_edit = self.central_widget.text_edit
 
-        self.central_widget.run_analysis_button.clicked.connect(
-            self.run_analysis)
-        self.central_widget.preview_button.clicked.connect(
-            self.preview_mermaid)
+        self.central_widget.run_analysis_button.clicked.connect(self.run_analysis)
+        self.central_widget.preview_button.clicked.connect(self.preview_mermaid)
 
         hlayout.addWidget(self.central_widget, 3)
 
@@ -370,7 +384,7 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         self.setAcceptDrops(True)
 
-        self.last_tree_structure = ['none']
+        self.last_tree_structure = ["none"]
 
         self.settings = self.load_settings()
 
@@ -379,15 +393,13 @@ class EditorWindow(QtWidgets.QMainWindow):
     @property
     def filename(self):
         if self.file_path is None:
-            raise ValueError(
-                "There is no file_path specified. Should open_file first")
+            raise ValueError("There is no file_path specified. Should open_file first")
         return osp.split(self.file_path)[-1]
 
     @property
     def filedir(self):
         if self.file_path is None:
-            raise ValueError(
-                "There is no file_path specified. Should open_file first")
+            raise ValueError("There is no file_path specified. Should open_file first")
         return osp.abspath(osp.dirname(self.file_path))
 
     # ====== Drag and drop ======
@@ -403,7 +415,7 @@ class EditorWindow(QtWidgets.QMainWindow):
             logger.debug("File dropped %s", str(url))
             if url.isLocalFile():
                 file = url.path()  # url.url().replace("file://", "")
-                if os.name == "nt" and file[0] == '/':
+                if os.name == "nt" and file[0] == "/":
                     file = file[1:]
                 self.open_file(file)
             break
@@ -415,6 +427,10 @@ class EditorWindow(QtWidgets.QMainWindow):
         if not clipboard:
             logger.warning("Clipboard is empty")
             return
+        url_pattern = "open?url="
+        if url_pattern in clipboard:
+            clipboard = clipboard[clipboard.find(url_pattern) + len(url_pattern) :]
+            clipboard = clipboard[: clipboard.rfind(")")]
         return self.open_from_string(clipboard)
 
     @catch_and_log
@@ -423,8 +439,7 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         old_file_path = self.file_path or self.settings.file_path
         if not old_file_path:
-            logger.warning(
-                "Cannot open file from string because there is no file yet opened.")
+            logger.warning("Cannot open file from string because there is no file yet opened.")
             return
         working_dir = os.path.dirname(old_file_path)
         path = os.path.join(working_dir, string)
@@ -432,34 +447,42 @@ class EditorWindow(QtWidgets.QMainWindow):
             self.open_file(path)
             return
 
-        filepath = labmate.utils.get_path_from_filename(  # pylint: disable=no-member
-            string)
+        filepath = labmate.utils.get_path_from_filename(string)  # pylint: disable=no-member
+
         if isinstance(filepath, tuple):
-            folders, filename = (filepath[0], ), filepath
+            folders, filename = (filepath[0],), filepath[1]
         else:
-            filepath = filepath.replace('\\', '/')
-            if '/' in filepath:
-                paths = filepath.split('/')
+            filepath = filepath.replace("\\", "/")
+            if "/" in filepath:
+                paths = filepath.split("/")
                 folders, filename = paths[:-1], paths[-1]
             else:
                 folders, filename = [], filepath
 
-        if '#' in filename:
-            filename, fileindex = filename.split('#')[:2]
+        if "#" in filename:
+            filename, fileindex = filename.split("#")[:2]
         else:
             fileindex = None
 
+        if not filename.endswith(".h5"):
+            filename = filename + ".h5"
+
         path = os.path.join(working_dir, *folders, filename)
-        while working_dir and not os.path.exists(path):
-            working_dir = os.path.dirname(working_dir)
+        current_suffix = "a"
+
+        while current_suffix and working_dir and not os.path.exists(path):
+            working_dir, current_suffix = os.path.split(working_dir)
             path = os.path.join(working_dir, *folders, filename)
+            # logger.warning("Testing %s", path)
+
         if not os.path.exists(path):
-            logger.warning("File %s at %s not found", filename, folders)
+            logger.warning("File %s not found", f'{"/".join(folders)}/{filename}')
             return
 
         self.open_file(path)
 
         if fileindex:
+            # TODO
             pass
 
     @catch_and_log
@@ -477,19 +500,18 @@ class EditorWindow(QtWidgets.QMainWindow):
         elif sys.platform == "darwin":
             subprocess.Popen(["open", "-R", os.path.dirname(self.file_path)])
         else:
-            subprocess.Popen(
-                ["nautilus", "--select", os.path.dirname(self.file_path)])
+            subprocess.Popen(["nautilus", "--select", os.path.dirname(self.file_path)])
 
     @catch_and_log
     def open_file(self, file_path: str):
-        if file_path.startswith('labmate://file/'):
-            file_path = file_path[len('labmate://file/'):]
+        if file_path.startswith("labmate://file/"):
+            file_path = file_path[len("labmate://file/") :]
             return self.open_from_string(file_path)
 
         logger.info("Opening file %s", file_path)
 
-        self.previous_data = self.data
-        if self.previous_data:
+        if self.data:
+            self.previous_data = SyncData(self.data.filepath, open_on_init=False)
             self.dif_button.setVisible(True)
             self.previous_data.close_key(every=True)
 
@@ -506,8 +528,7 @@ class EditorWindow(QtWidgets.QMainWindow):
     @catch_and_log
     def run_analysis(self, *args):
         if self.file_path is None:
-            raise ValueError(
-                "There is no file_path specified. Should open_file first")
+            raise ValueError("There is no file_path specified. Should open_file first")
 
         analysis_code_original = self.text_edit.toPlainText()
         init_code = ""
@@ -515,11 +536,11 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         source = None
         if osp.exists(init_code_file):
-            with open(init_code_file, 'r', encoding='utf-8') as file:
+            with open(init_code_file, "r", encoding="utf-8") as file:
                 line = file.readline()
-                while (line.startswith('#')):
-                    if line.startswith('# SOURCE: '):
-                        source = line[len("# SOURCE: "):-1]
+                while line.startswith("#"):
+                    if line.startswith("# SOURCE: "):
+                        source = line[len("# SOURCE: ") : -1]
                         break
                     line = file.readline()
 
@@ -531,14 +552,13 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         code = init_code + analysis_code_original
         if source:
-            with open(osp.join(self.filedir, "__code_to_run__.py"),
-                      "w", encoding="utf=8") as file:
+            with open(osp.join(self.filedir, "__code_to_run__.py"), "w", encoding="utf=8") as file:
                 file.write(code)
             import subprocess  # pylint: disable=C0415
+
             command = f"{source}&& cd {self.filedir}&& python __code_to_run__.py"
             print(command)
-            ret = subprocess.run(
-                command, capture_output=True, shell=True, check=False)
+            ret = subprocess.run(command, capture_output=True, shell=True, check=False)
 
             logger.info("from subprocess: %s", ret.stdout.decode())
             if ret.stderr.decode():
@@ -552,8 +572,7 @@ class EditorWindow(QtWidgets.QMainWindow):
     @catch_and_log
     def preview_mermaid(self, *args):
         if self.file_path is None:
-            raise ValueError(
-                "There is no file_path specified. Should open_file first")
+            raise ValueError("There is no file_path specified. Should open_file first")
         md = self.text_edit.toPlainText()
         pattern = "```mermaid((.*\n?)*)```"
         found = re.search(pattern, md)
@@ -561,17 +580,19 @@ class EditorWindow(QtWidgets.QMainWindow):
             return
         mermaid = found.group(1)
         # print(mermaid)
-        path = Path('preview_mermaid.html')
+        path = Path("preview_mermaid.html")
         link = f"""<h1>{self.filename} {self.last_tree_structure[-1]}</h1><div class="mermaid">{mermaid}</div>
         <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
         <script>mermaid.initialize({{startOnLoad:true}});</script>"""
-        with open(path, 'w', encoding="utf-8") as file:
+        with open(path, "w", encoding="utf-8") as file:
             file.write(link)
 
         import webbrowser  # pylint: disable=C0415, E0401
+
         webbrowser.open(f"file://{path.absolute()}")
         time.sleep(1)
         os.remove(path.absolute())
+
     # ====== File difference ======
 
     @catch_and_log
@@ -579,6 +600,7 @@ class EditorWindow(QtWidgets.QMainWindow):
         if not self.previous_data:
             return
         import difflib
+
         d = difflib.Differ()
 
         keys = self.last_tree_structure
@@ -586,47 +608,37 @@ class EditorWindow(QtWidgets.QMainWindow):
         previous_data = self.get_data_by_key(self.previous_data, keys)
 
         if previous_data is ObjectNotExists:
-            self.text_edit.setPlainText(
-                "Previous data doesn't have the following key")
+            self.text_edit.setPlainText("Previous data doesn't have the following key")
             return
 
         if current_data is ObjectNotExists:
-            self.text_edit.setPlainText(
-                "Current data doesn't have the following key")
+            self.text_edit.setPlainText("Current data doesn't have the following key")
             return
 
-        diff = list(d.compare(
-                    to_str(current_data).splitlines(),
-                    to_str(previous_data).splitlines(),))
+        diff = list(
+            d.compare(
+                to_str(current_data).splitlines(),
+                to_str(previous_data).splitlines(),
+            )
+        )
 
-        print('\n'.join(diff))
+        # print("\n".join(diff))
         diff_result = []
         for line in diff:
-            if line.startswith('- '):
-                diff_result.append(
-                    f'<span style="background-color: #FFCCCC;">{line[2:]}</span>')
-            elif line.startswith('+ '):
-                diff_result.append(
-                    f'<span style="background-color: #08A045;">{line[2:]}</span>')
+            if line.startswith("- "):
+                diff_result.append(f'<span style="background-color: #FFCCCC;">{line[2:]}</span>')
+            elif line.startswith("+ "):
+                diff_result.append(f'<span style="background-color: #08A045;">{line[2:]}</span>')
             else:
-                diff_result.append(f'<span>{line[2:]}</span>')
+                diff_result.append(f"<span>{line[2:]}</span>")
 
-        formatted_html = '<pre>' + '<br>'.join(diff_result) + '</pre>'
+        formatted_html = "<pre>" + "<br>".join(diff_result) + "</pre>"
         self.text_edit.setHtml(formatted_html)
 
     # ====== Tree interaction ======
 
     @catch_and_log
-    def close_last_open_tree_item(self):
-        if self.last_tree_index is None:
-            return
-        last_item = self.structure.itemFromIndex(self.last_tree_index)
-        if has_outline(last_item.text(0)):
-            self.structure.collapse(self.last_tree_index)
-
-    @catch_and_log
-    def tree_double_click(self,
-                          index: QtCore.QModelIndex) -> None:
+    def tree_double_click(self, index: QtCore.QModelIndex) -> None:
         assert self.data, "Data should be loaded before reading"
         return self.structure_selected(index)
 
@@ -661,17 +673,15 @@ class EditorWindow(QtWidgets.QMainWindow):
         return data
 
     @catch_and_log
-    def structure_selected(self,
-                           index: QtCore.QModelIndex):
-
+    def structure_selected(self, index: QtCore.QModelIndex):
         tree_to_item = self.structure.get_row_tree(index)
         item = self.structure.itemFromIndex(index)
 
         self.central_widget.run_analysis_button.setVisible(False)
         self.central_widget.preview_button.setVisible(False)
 
-        self.close_last_open_tree_item()
-        self.last_tree_index = index
+        self.structure.close_last_open_tree_item()
+        self.structure.last_tree_index = index
         self.last_tree_structure = tree_to_item
 
         data = self.data.get_dict(tree_to_item[0])
@@ -693,15 +703,14 @@ class EditorWindow(QtWidgets.QMainWindow):
                 self.text_edit.ensureCursorVisible()
                 return
 
-        self.key_label.setText('#' + ".".join(tree_to_item))
-        self.key_label.setStyleSheet('')
+        self.key_label.setText("#" + ".".join(tree_to_item))
+        self.key_label.setStyleSheet("")
 
         if isinstance(data, dict):
             if item.childCount() == 0:
                 for key in sorted(list(data.keys())):
                     TreeWidgetItem(item, key)
-            self.text_edit.setText(
-                ("It contains more data" if len(data) > 0 else str(data)))
+            self.text_edit.setText(("It contains more data" if len(data) > 0 else str(data)))
         else:
             if tree_to_item[0].startswith("analysis_cell"):
                 self.central_widget.run_analysis_button.setVisible(True)
@@ -720,7 +729,10 @@ class EditorWindow(QtWidgets.QMainWindow):
 
     # ====== Shortcuts ======
     def keyPressEvent(self, event):
-        if event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier and event.key() == QtCore.Qt.Key.Key_F:
+        if (
+            event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
+            and event.key() == QtCore.Qt.Key.Key_F
+        ):
             if not self.central_widget.find_field.isVisible():
                 self.central_widget.find_field.setVisible(True)
                 self.central_widget.find_field.setFocus()
@@ -731,8 +743,7 @@ class EditorWindow(QtWidgets.QMainWindow):
 
     def key_label_click(self, event):
         clipboard = QtWidgets.QApplication.clipboard()
-        clipboard.setText(self.key_label.text(),
-                          mode=QtGui.QClipboard.Mode.Clipboard)
+        clipboard.setText(self.key_label.text(), mode=QtGui.QClipboard.Mode.Clipboard)
         self.key_label.setStyleSheet("border-bottom: 1px solid;")
 
     # ====== Config ========
@@ -760,13 +771,14 @@ def main():
 
     APP.setStyleSheet(style_sheet)
 
-    if os.name == 'nt':
+    if os.name == "nt":
         try:
             from ctypes import windll
-            myappid = 'mycompany.myproduct.subproduct.version'
+
+            myappid = "mycompany.myproduct.subproduct.version"
             windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
             basedir = osp.dirname(__file__)
-            APP.setWindowIcon(QtGui.QIcon(osp.join(basedir, 'favicon.ico')))
+            APP.setWindowIcon(QtGui.QIcon(osp.join(basedir, "favicon.ico")))
         except ImportError:
             pass
 
