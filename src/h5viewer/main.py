@@ -35,8 +35,8 @@ if os.name == "nt" or os.environ.get("PYINSTALLER"):
         QtCore.QStandardPaths.StandardLocation.AppConfigLocation)
     os.makedirs(local_path + "\\" + "labmate", exist_ok=True)
 
-    config_path = local_path + "\\" + "labmate" + "\\" + "config.ini"
-    SETTINGS = QtCore.QSettings(config_path, QtCore.QSettings.IniFormat)
+    config_path = os.path.join(local_path, "labmate", "config.ini")
+    SETTINGS = QtCore.QSettings(config_path, QtCore.QSettings.Format.IniFormat)
 else:
     SETTINGS = QtCore.QSettings()
 
