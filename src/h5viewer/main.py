@@ -30,6 +30,17 @@ logger.setLevel(logging.DEBUG)
 STARTED_FROM_CMD = True
 
 
+if os.name == "nt" or os.environ.get("PYINSTALLER"):
+    local_path = QtCore.QStandardPaths.writableLocation(
+        QtCore.QStandardPaths.AppConfigLocation)
+    os.makedirs(local_path + "\\" + "labmate", exist_ok=True)
+
+    config_path = local_path + "\\" + "labmate" + "\\" + "config.ini"
+    SETTINGS = QtCore.QSettings(config_path, QtCore.QSettings.IniFormat)
+else:
+    SETTINGS = QtCore.QSettings()
+
+
 def get_aqm_variable(code):
     code2 = code[:code.find('.analysis_cell')]
     return code2[code2.rfind('\n')+1:]
@@ -728,13 +739,11 @@ class EditorWindow(QtWidgets.QMainWindow):
 
     @catch_and_log
     def save_settings(self):
-        settings = QtCore.QSettings()
-        settings.setValue("file_path", self.file_path)
+        SETTINGS.setValue("file_path", self.file_path)
 
     @catch_and_log
     def load_settings(self):
-        settings = QtCore.QSettings()
-        file_path = settings.value("file_path")
+        file_path = SETTINGS.value("file_path")
         return AppSettings(file_path=file_path)
 
 

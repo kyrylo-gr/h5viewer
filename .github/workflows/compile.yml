@@ -55,6 +55,8 @@ jobs:
 
       - name: Compile for ${{ matrix.config.os }}
         run: ${{ matrix.config.COMMAND }}
+        env:
+          PYINSTALLER: True
 
       - name: Post-Build for ${{ matrix.config.os }}
         if: ${{ matrix.config.POST_BUILD_CMD != '' }}

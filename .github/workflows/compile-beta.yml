@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Compile
+name: Compile with git version of labmate
 
 on:
   workflow_dispatch:
@@ -54,11 +54,13 @@ jobs:
           cd labmate
           pip install .
           cd ..
-          pip install PyQt6
-          pip install pyinstaller
+          pip install --upgrade PyQt6
+          pip install --upgrade pyinstaller
 
       - name: Compile for ${{ matrix.config.os }}
         run: ${{ matrix.config.COMMAND }}
+        env:
+          PYINSTALLER: True
 
       - name: Post-Build for ${{ matrix.config.os }}
         if: ${{ matrix.config.POST_BUILD_CMD != '' }}
