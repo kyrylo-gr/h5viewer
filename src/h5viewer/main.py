@@ -32,7 +32,7 @@ STARTED_FROM_CMD = True
 
 if os.name == "nt" or os.environ.get("PYINSTALLER"):
     local_path = QtCore.QStandardPaths.writableLocation(
-        QtCore.QStandardPaths.AppConfigLocation)
+        QtCore.QStandardPaths.StandardLocation.AppConfigLocation)
     os.makedirs(local_path + "\\" + "labmate", exist_ok=True)
 
     config_path = local_path + "\\" + "labmate" + "\\" + "config.ini"
