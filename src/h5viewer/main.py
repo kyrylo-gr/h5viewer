@@ -355,9 +355,7 @@ class EditorWindow(QtWidgets.QMainWindow):
 
         self.last_tree_structure = ['none']
 
-        settings = self.load_settings()
-        if settings.file_path:
-            self.open_file(settings.file_path)
+        self.settings = self.load_settings()
 
     # ====== Properties ======
 
@@ -406,28 +404,35 @@ class EditorWindow(QtWidgets.QMainWindow):
     def open_from_string(self, string):
         logger.info("Open from string: '%s'", string)
 
-        if self.file_path is None:
+        old_file_path = self.file_path or self.settings.file_path
+        if not old_file_path:
             logger.warning(
                 "Cannot open file from string because there is no file yet opened.")
             return
-        working_dir = os.path.dirname(self.file_path)
+        working_dir = os.path.dirname(old_file_path)
         path = os.path.join(working_dir, string)
         if os.path.exists(path):
             self.open_file(path)
             return
 
-        filepath = labmate.utils.get_path_from_filename(string)
+        filepath = labmate.utils.get_path_from_filename(  # pylint: disable=no-member
+            string)
         if isinstance(filepath, tuple):
-            folder, filename = filepath
+            folders, filename = (filepath[0], ), filepath
         else:
-            folder, filename = '', filepath
-        working_dir = os.path.dirname(self.file_path)
-        path = os.path.join(working_dir, folder, filename)
+            filepath = filepath.replace('\\', '/')
+            if '/' in filepath:
+                paths = filepath.split('/')
+                folders, filename = paths[:-1], paths[-1]
+            else:
+                folders, filename = [], filepath
+
+        path = os.path.join(working_dir, *folders, filename)
         while working_dir and not os.path.exists(path):
             working_dir = os.path.dirname(working_dir)
-            path = os.path.join(working_dir, folder, filename)
+            path = os.path.join(working_dir, *folders, filename)
         if not os.path.exists(path):
-            logger.warning("File %s at %s not found", filename, folder)
+            logger.warning("File %s at %s not found", filename, folders)
             return
 
         self.open_file(path)
@@ -451,7 +456,13 @@ class EditorWindow(QtWidgets.QMainWindow):
                 ["nautilus", "--select", os.path.dirname(self.file_path)])
 
     @catch_and_log
-    def open_file(self, file_path):
+    def open_file(self, file_path: str):
+        if file_path.startswith('labmate://file/'):
+            file_path = file_path[len('labmate://file/'):]
+            return self.open_from_string(file_path)
+
+        logger.info("Opening file %s", file_path)
+
         self.previous_data = self.data
         if self.previous_data:
             self.dif_button.setVisible(True)
@@ -731,8 +742,10 @@ def main():
 
     if len(sys.argv) > 1:
         FILE_PATH = sys.argv[1]
-        logger.info("Opening file %s", FILE_PATH)
         EDITOR.open_file(FILE_PATH)
+    else:
+        if EDITOR.settings.file_path:
+            EDITOR.open_file(EDITOR.settings.file_path)
     APP.exec()
 
 

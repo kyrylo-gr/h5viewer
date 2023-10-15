@@ -184,4 +184,6 @@ tmp_test_data
 trash.*
 trash_*.*
 
+/drafts
+
 .vscode

@@ -1,0 +1,14 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\labmate]
+@="URL:labmate Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\labmate\DefaultIcon]
+
+[HKEY_CLASSES_ROOT\labmate\shell]
+
+[HKEY_CLASSES_ROOT\labmate\shell\open]
+
+[HKEY_CLASSES_ROOT\labmate\shell\open\command]
+@="\"C:\\Program Files\\labmate\\h5viewer.exe\" \"%1\""

@@ -13,8 +13,8 @@
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
       let url = urlParams.get('url');
-      url = 'labmate://file//' + url;
-      open(url, '_blank');
+      url = 'labmate://file/' + url;
+      open(url);
       close();
     </script>
   </body>
