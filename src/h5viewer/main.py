@@ -327,8 +327,10 @@ class EditorWindow(QtWidgets.QMainWindow):
         vhlayout.addWidget(self.structure, 3)
         vhlayout.addWidget(self.logTextBox.widget, 1)
         vhlayout.addWidget(self.dif_button, 1)
-        vhlayout.addWidget(self.open_from_clipboard_button, 1)
-        vhlayout.addWidget(self.open_in_finder_button, 1)
+        buttons = QtWidgets.QHBoxLayout()
+        buttons.addWidget(self.open_in_finder_button, 1)
+        buttons.addWidget(self.open_from_clipboard_button, 1)
+        vhlayout.addLayout(buttons, 1)
 
         vhwidget = QtWidgets.QWidget()
         vhwidget.setLayout(vhlayout)
