@@ -31,14 +31,15 @@ STARTED_FROM_CMD = True
 
 
 if os.name == "nt" or os.environ.get("PYINSTALLER"):
-    local_path = QtCore.QStandardPaths.writableLocation(
+    LOCAL_PATH = QtCore.QStandardPaths.writableLocation(
         QtCore.QStandardPaths.StandardLocation.AppConfigLocation
     )
-    os.makedirs(local_path + "\\" + "labmate", exist_ok=True)
-
-    config_path = os.path.join(local_path, "labmate", "config.ini")
+    LOCAL_PATH = os.path.join(LOCAL_PATH, "labmate")
+    os.makedirs(LOCAL_PATH, exist_ok=True)
+    config_path = os.path.join(LOCAL_PATH, "config.ini")
     SETTINGS = QtCore.QSettings(config_path, QtCore.QSettings.Format.IniFormat)
 else:
+    LOCAL_PATH = os.getcwd()
     SETTINGS = QtCore.QSettings()
 
 
@@ -496,7 +497,8 @@ class EditorWindow(QtWidgets.QMainWindow):
         logger.info("Open folder %s", path)
 
         if sys.platform == "win32":
-            subprocess.Popen(["explorer", "/select,", path], shell=True)
+            path = path.replace("/", "\\")
+            subprocess.run(["explorer", "/select,", path], shell=True)
         elif sys.platform == "darwin":
             subprocess.Popen(["open", "-R", os.path.dirname(self.file_path)])
         else:
@@ -580,7 +582,7 @@ class EditorWindow(QtWidgets.QMainWindow):
             return
         mermaid = found.group(1)
         # print(mermaid)
-        path = Path("preview_mermaid.html")
+        path = Path(LOCAL_PATH, "preview_mermaid.html")
         link = f"""<h1>{self.filename} {self.last_tree_structure[-1]}</h1><div class="mermaid">{mermaid}</div>
         <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
         <script>mermaid.initialize({{startOnLoad:true}});</script>"""
@@ -614,6 +616,8 @@ class EditorWindow(QtWidgets.QMainWindow):
         if current_data is ObjectNotExists:
             self.text_edit.setPlainText("Current data doesn't have the following key")
             return
+
+        self.key_label.setText(f"Diff with: {self.previous_data.filename}")
 
         diff = list(
             d.compare(
