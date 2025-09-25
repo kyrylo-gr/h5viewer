@@ -665,7 +665,7 @@ class EditorWindow(QtWidgets.QMainWindow):
         if keys[0] not in data:
             return ObjectNotExists
 
-        data = data.get_dict(keys[0])
+        data = data.get_raw(keys[0])
         for key in keys[1:]:
             if key not in data:
                 return ObjectNotExists
@@ -688,7 +688,7 @@ class EditorWindow(QtWidgets.QMainWindow):
         self.structure.last_tree_index = index
         self.last_tree_structure = tree_to_item
 
-        data = self.data.get_dict(tree_to_item[0])
+        data = self.data.get_raw(tree_to_item[0])
         for key in tree_to_item[1:]:
             if isinstance(data, dict):
                 # print(key, data)
