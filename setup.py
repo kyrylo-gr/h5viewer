@@ -25,5 +25,6 @@ setuptools.setup(
     install_requires=[
         "PyQt6",
         "labmate",
+        "dh5>=0.8.1",
     ],
 )
