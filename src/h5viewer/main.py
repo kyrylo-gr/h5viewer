@@ -8,12 +8,13 @@ after: kyrylo-gr
 
 https://stackoverflow.com/questions/63611190/python-macos-builds-run-from-terminal-but-crash-on-finder-launch
 """
+import ast
 import logging
 import os
 import sys
 import subprocess
 
-from labmate.path import Path
+from pathlib import Path
 import time
 import re
 import os.path as osp
@@ -21,7 +22,7 @@ from typing import List, NamedTuple, Optional
 from PyQt6 import QtWidgets
 from PyQt6 import QtGui, QtCore
 
-from labmate.syncdata import SyncData  # pylint: disable=E0401
+from dh5 import DH5
 import labmate  # pylint: disable=E0401
 
 logging.basicConfig(level=logging.NOTSET)
@@ -51,14 +52,35 @@ def get_aqm_variable(code):
 def convert_analyse_code(code: str, filepath: str):
     aqm_variable = get_aqm_variable(code)
     code = (
-        code.replace("%", "#%")
+        re.sub(r"(?m)^(\s*)%", r"\1#%", code)
         .replace("fig.show()", "plt.show()")
-        .replace(
-            f"{aqm_variable}.analysis_cell(",
-            f'{aqm_variable}.analysis_cell(filepath="{filepath}",',
-        )
         .replace(f"{aqm_variable}.save_fig(", f"# {aqm_variable}.save_fig(")
     )
+    # Reopen the selected file, replacing any saved local or remote file request.
+    # Source offsets keep the rest of the saved cell and its comments unchanged.
+    try:
+        calls = [node for node in ast.walk(ast.parse(code))
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                 and node.func.attr == "analysis_cell"]
+    except SyntaxError:
+        calls = []
+    encoded = code.encode("utf-8")
+    offsets = [0]
+    for line in encoded.splitlines(keepends=True):
+        offsets.append(offsets[-1] + len(line))
+    for call in sorted(calls, key=lambda node: (node.lineno, node.col_offset), reverse=True):
+        arguments = [f"filepath={filepath!r}"]
+        arguments.extend(
+            ast.get_source_segment(code, keyword)
+            for keyword in call.keywords
+            if keyword.arg not in {"filename", "filepath", "experiment_id", "download_timeout"}
+        )
+        function = ast.get_source_segment(code, call.func)
+        replacement = f"{function}({', '.join(arguments)})".encode("utf-8")
+        start = offsets[call.lineno - 1] + call.col_offset
+        end = offsets[call.end_lineno - 1] + call.end_col_offset
+        encoded = encoded[:start] + replacement + encoded[end:]
+    code = encoded.decode("utf-8")
     if "plt." in code and "plt.show" not in code:
         code += "\nplt.show()\n"
 
@@ -318,10 +340,10 @@ class StructureWidget(QtWidgets.QTreeWidget):
 
 # ====== Main menu ======
 class EditorWindow(QtWidgets.QMainWindow):
-    data: Optional[SyncData] = None
+    data: Optional[DH5] = None
     file_path = None
     last_tree_index = None
-    previous_data: Optional[SyncData] = None
+    previous_data: Optional[DH5] = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -513,15 +535,17 @@ class EditorWindow(QtWidgets.QMainWindow):
         logger.info("Opening file %s", file_path)
 
         if self.data:
-            self.previous_data = SyncData(self.data.filepath, open_on_init=False)
+            self.previous_data = DH5(self.file_path, mode="r", open_on_init=False)
             self.dif_button.setVisible(True)
-            self.previous_data.close_key(every=True)
+            self.previous_data.close_data(every=True)
 
+        file_path = str(Path(file_path).expanduser().resolve())
+        data = DH5(file_path, mode="r", open_on_init=False)
         self.file_path = file_path
 
         self.structure.clear()
 
-        self.data = SyncData(file_path, open_on_init=False)
+        self.data = data
         self.structure.update(self.data.keys_tree())
         self.setWindowTitle(osp.split(file_path)[1])
         self.save_settings()
@@ -718,7 +742,7 @@ class EditorWindow(QtWidgets.QMainWindow):
         else:
             if tree_to_item[0].startswith("analysis_cell"):
                 self.central_widget.run_analysis_button.setVisible(True)
-                data = convert_analyse_code(str(data), self.filename)
+                data = convert_analyse_code(str(data), self.file_path)
             if isinstance(data, str) and "```mermaid" in data:
                 self.central_widget.preview_button.setVisible(True)
 
