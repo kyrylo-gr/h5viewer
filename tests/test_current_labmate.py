@@ -9,8 +9,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 import numpy as np
 from dh5 import DH5
 from dh5.errors import ReadOnlyKeyError
@@ -22,6 +20,7 @@ from PyQt6 import QtCore, QtWidgets
 class CurrentLabmateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
         cls.application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         cls.settings_directory = tempfile.TemporaryDirectory()
         with patch.object(QtCore.QStandardPaths, "writableLocation",
@@ -86,8 +85,9 @@ class CurrentLabmateTests(unittest.TestCase):
         self.window.open_file(str(second))
         self.assertEqual(self.window.file_path, str(second.resolve()))
         self.assertIsInstance(self.window.previous_data, DH5)
-        self.assertEqual(self.window.get_data_by_key(self.window.previous_data,
-                                                   ["calibration", "gain"]), 2)
+        self.assertEqual(
+            self.window.get_data_by_key(self.window.previous_data, ["calibration", "gain"]), 2
+        )
         self.window.last_tree_structure = ["calibration", "gain"]
         self.window.show_difference(None)
         self.assertIn("2", self.window.text_edit.toPlainText())
